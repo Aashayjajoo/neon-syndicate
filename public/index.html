@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Syndicate: Cyberpunk Gang Wars</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="hud">
+      <div id="creds"></div>
+      <div id="hqHealth"></div>
+      <div id="status">Waiting for rival gang...</div>
+    </div>
+    <div id="controls">
+      <button id="upgradeBtn">Upgrade HQ (10 Creds)</button>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>

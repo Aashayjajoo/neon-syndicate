@@ -1,7 +1,7 @@
 {
-  "name": "neon-syndicate",
+  "name": "cyber-clash-3d",
   "version": "1.0.0",
-  "description": "Cyberpunk gang wars game",
+  "description": "3D cyberpunk fighting game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

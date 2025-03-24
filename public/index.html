@@ -3,21 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Neon Syndicate: Cyberpunk Gang Wars</title>
+  <title>Cyber Clash 3D: Neon Arena</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="game-container">
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="gameCanvas"></div>
     <div id="hud">
-      <div id="creds"></div>
-      <div id="hqHealth"></div>
-      <div id="status">Waiting for rival gang...</div>
-    </div>
-    <div id="controls">
-      <button id="upgradeBtn">Upgrade HQ (10 Creds)</button>
+      <div id="player1Health"></div>
+      <div id="player2Health"></div>
+      <div id="status">Waiting for opponent...</div>
     </div>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="client.js"></script>
 </body>

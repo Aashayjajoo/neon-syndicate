@@ -1,12 +1,19 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
 
-app.use(express.static('public'));
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Handle root route explicitly
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 const players = {};
 let playerCount = 0;
@@ -14,9 +21,9 @@ let playerCount = 0;
 io.on('connection', (socket) => {
   if (playerCount < 2) {
     players[socket.id] = {
-      x: playerCount === 0 ? 100 : 600, // Fighter starting position
+      x: playerCount === 0 ? 100 : 600,
       y: 300,
-      hqX: playerCount === 0 ? 50 : 650, // HQ position
+      hqX: playerCount === 0 ? 50 : 650,
       hqY: 300,
       hqHealth: 100,
       creds: 10,
@@ -66,7 +73,6 @@ io.on('connection', (socket) => {
     io.emit('updateGame', players);
   });
 
-  // Simulate cyber-storm every 30 seconds
   setInterval(() => {
     for (let id in players) {
       players[id].hqHealth = Math.max(0, players[id].hqHealth - 5);

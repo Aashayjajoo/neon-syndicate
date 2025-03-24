@@ -1,82 +1,126 @@
 const socket = io();
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const credsDiv = document.getElementById('creds');
-const hqHealthDiv = document.getElementById('hqHealth');
+const container = document.getElementById('gameCanvas');
+const player1HealthDiv = document.getElementById('player1Health');
+const player2HealthDiv = document.getElementById('player2Health');
 const statusDiv = document.getElementById('status');
-const upgradeBtn = document.getElementById('upgradeBtn');
 
 let player = null;
 const gameState = {};
+let jumping = false;
+
+// Three.js Setup
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(800, 600);
+container.appendChild(renderer.domElement);
+
+// Arena Platform
+const platformGeometry = new THREE.BoxGeometry(20, 0.2, 20);
+const platformMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true });
+const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+scene.add(platform);
+
+// Fighters
+const fighters = {};
+function createFighter(id, color) {
+  const geometry = new THREE.BoxGeometry(1, 2, 1);
+  const material = new THREE.MeshBasicMaterial({ color });
+  const fighter = new THREE.Mesh(geometry, material);
+  scene.add(fighter);
+  fighters[id] = fighter;
+}
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+
+// Camera Position
+camera.position.set(0, 5, 10);
+camera.lookAt(0, 0, 0);
 
 socket.on('playerAssignment', (data) => {
   player = data;
-  statusDiv.textContent = `Gang ${player.playerNum} - Ready to Fight`;
+  statusDiv.textContent = `You are ${player.fighter}`;
+  createFighter(player.id, player.fighter === 'Blaze' ? 0xff4500 : 0x00b7eb);
 });
 
 socket.on('gameFull', () => {
-  statusDiv.textContent = 'City’s too crowded! Try later.';
+  statusDiv.textContent = 'Arena is full! Try later.';
 });
 
 socket.on('updateGame', (serverState) => {
   Object.assign(gameState, serverState);
-  if (player) {
-    credsDiv.textContent = `Creds: ${gameState[player.id].creds}`;
-    hqHealthDiv.textContent = `HQ Health: ${gameState[player.id].hqHealth}`;
+  for (let id in gameState) {
+    if (!fighters[id]) {
+      createFighter(id, gameState[id].fighter === 'Blaze' ? 0xff4500 : 0x00b7eb);
+    }
+    fighters[id].position.set(gameState[id].x, gameState[id].y + 1, gameState[id].z);
   }
-  render();
-});
-
-socket.on('cyberStorm', () => {
-  statusDiv.textContent = 'Cyber-storm hits! HQ damaged!';
-  setTimeout(() => {
-    if (player) statusDiv.textContent = `Gang ${player.playerNum} - Ready to Fight`;
-  }, 3000);
+  updateHUD();
 });
 
 socket.on('gameOver', (data) => {
-  statusDiv.textContent = `Game Over! Winner: Gang ${data.winner === player.id ? player.playerNum : (3 - player.playerNum)}`;
+  statusDiv.textContent = `Winner: ${data.winner === player.id ? player.fighter : gameState[data.winner === player.id ? Object.keys(gameState).find(id => id !== player.id) : player.id].fighter}`;
 });
 
 document.addEventListener('keydown', (e) => {
   if (!player) return;
 
-  const speed = 5;
+  const speed = player.fighter === 'Frost' ? 0.2 : 0.15; // Frost moves faster
   switch (e.key) {
     case 'ArrowLeft': player.x -= speed; break;
     case 'ArrowRight': player.x += speed; break;
-    case 'ArrowUp': player.y -= speed; break;
-    case 'ArrowDown': player.y += speed; break;
-    case ' ': // Spacebar to attack
+    case 'ArrowUp': player.z -= speed; break;
+    case 'ArrowDown': player.z += speed; break;
+    case ' ': // Jump
+      if (!jumping) {
+        jumping = true;
+        let jumpHeight = 0;
+        const jump = setInterval(() => {
+          if (jumpHeight < 2) {
+            player.y += 0.2;
+            jumpHeight += 0.2;
+          } else {
+            clearInterval(jump);
+            const fall = setInterval(() => {
+              if (player.y > 0) {
+                player.y -= 0.2;
+              } else {
+                player.y = 0;
+                jumping = false;
+                clearInterval(fall);
+              }
+              socket.emit('move', { x: player.x, y: player.y, z: player.z });
+            }, 20);
+          }
+          socket.emit('move', { x: player.x, y: player.y, z: player.z });
+        }, 20);
+      }
+      break;
+    case 'a': // Attack
       for (let id in gameState) {
         if (id !== player.id) socket.emit('attack', id);
       }
       break;
   }
-  player.x = Math.max(0, Math.min(canvas.width - 20, player.x));
-  player.y = Math.max(0, Math.min(canvas.height - 20, player.y));
-  socket.emit('moveFighter', { x: player.x, y: player.y });
+  player.x = Math.max(-10, Math.min(10, player.x));
+  player.z = Math.max(-10, Math.min(10, player.z));
+  socket.emit('move', { x: player.x, y: player.y, z: player.z });
 });
 
-upgradeBtn.addEventListener('click', () => {
-  socket.emit('upgradeHQ');
-});
-
-function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+function updateHUD() {
   for (let id in gameState) {
-    const p = gameState[id];
-    // Draw HQ
-    ctx.fillStyle = p.id === player?.id ? '#00ffcc' : '#ff00ff';
-    ctx.fillRect(p.hqX, p.hqY, 40, 40);
-    // Draw Fighter
-    ctx.fillStyle = p.id === player?.id ? '#00ccff' : '#ff33cc';
-    ctx.fillRect(p.x, p.y, 20, 20);
-    // Labels
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(`Gang ${p.playerNum}`, p.hqX, p.hqY - 10);
+    if (gameState[id].playerNum === 1) {
+      player1HealthDiv.textContent = `Blaze: ${gameState[id].health} HP`;
+    } else {
+      player2HealthDiv.textContent = `Frost: ${gameState[id].health} HP`;
+    }
   }
 }
 
-render();
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+animate();
